@@ -325,14 +325,4 @@ Check `dist/HRA.exe`. You can now share it with users without requiring Python.
 
 ---
 
-## 🙌 Credits
 
-* Built with 💙 by \[Your Name]
-* Icon base64s from `https://icons8.com`
-* UI inspired by modern Microsoft design system
-
----
-
-## 🛡️ License
-
-MIT License
