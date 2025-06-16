@@ -152,6 +152,181 @@ Also used by the GUI layer via function injection to `print()` — redirecting o
 
 #### 🔹 `ensure_app_folders()`
 
+\[PLACEHOLDER: DEVELOPER DOCUMENTATION FOR SSS DATA CLEANER]
+
+This Python code defines a GUI application for cleaning and validating SSS (Social Security System) data files. It's structured as a desktop application using the tkinter library for the graphical user interface, pandas for data manipulation, and pathlib and os for file system operations.
+
+---
+
+### 1. Imports and Helper Functions
+
+#### Import Statements
+
+* **pandas as pd**: For powerful data manipulation and analysis.
+* **os, io, sys, pathlib.Path**: For file system operations.
+* **tkinter**, **tkinter.ttk**, **tkinter.filedialog**, **tkinter.messagebox**: GUI components.
+* **ttkthemes**: Modern themes for ttk widgets.
+* **PIL.Image, PIL.ImageTk**: For GUI image rendering.
+* **base64**: Decoding icon image data.
+* **uuid.uuid4**: For generating unique identifiers (though not explicitly used).
+
+#### Functions:
+
+* `get_base_path()`, `get_app_path()` - Handles relative paths for resources.
+* `ensure_app_folders()` - Creates `OUTPUT` and `REPORT` folders if they don't exist.
+* `ICONS` dictionary - Stores icons in base64 format for use in GUI buttons.
+
+---
+
+### 2. GUI Helper Classes
+
+* **Toast**: Transient message notification (bottom right corner).
+* **ButtonWithIcon**: Custom button class supporting icon + text.
+* **ToolTip**: Hover-help tooltip window.
+* **LoadingSpinner**: Visual processing animation using canvas.
+
+---
+
+### 3. `DataCleanerGUI` Class (Main Application Logic)
+
+#### `__init__()`
+
+* Sets up main window, styles, variables, and GUI widgets.
+* Uses `ttkthemes` for modern look.
+* Initializes `tk.StringVar()` for user-selected files and status.
+
+#### \_configure\_styles()
+
+* Customizes ttk styles for theming consistency.
+
+#### \_create\_keyboard\_shortcuts()
+
+* Adds hotkeys for common actions (Ctrl+O, Ctrl+P, F1).
+
+#### \_create\_tooltips()
+
+* Assigns contextual hover-tooltips.
+
+#### \_show\_help()
+
+* Displays help modal (shortcuts, instructions).
+
+#### \_create\_widgets()
+
+* Main GUI layout builder:
+
+  * Header
+  * File Selector Cards
+  * Options Card (future use)
+  * Results Viewer (`tk.Text` + `ttk.Scrollbar`)
+  * Bottom Bar: action buttons
+  * Status Bar
+
+#### \_update\_status()
+
+* Updates footer status bar.
+
+#### File Selectors:
+
+* `_browse_raw_file()`, `_browse_upload_file()`
+
+  * Uses `askopenfilename()`
+  * Shows Toasts and updates status
+
+#### \_process\_files()
+
+* Core handler for data validation
+* Handles GUI state changes (spinner, button disable, stdout redirection)
+* Calls the `main()` function
+
+#### \_save\_log()
+
+* Saves `results_text` content to text file
+
+#### \_filter\_results()
+
+* Filters results log based on input
+
+#### \_clear\_results()
+
+* Clears both the result log and filter
+
+#### \_open\_output\_folder() / \_open\_report\_folder()
+
+* Opens folders in Windows Explorer
+
+---
+
+### 4. Data Processing Functions
+
+#### read\_data\_file(file\_path)
+
+* Tries multiple encodings to load semi-colon-separated text
+* Verifies format, dtypes, and nulls
+* Strips whitespace, filters out unreadable chars
+* Warns for duplicates and invalid amounts
+
+#### compare\_dataframes(raw\_df, upload\_df)
+
+* Finds missing, extra, and mismatching records
+* Returns structured report for GUI/logging
+
+#### clean\_upload\_file(raw\_df, upload\_df, extra\_records, output\_path)
+
+* Removes extras
+* Aligns cleaned data to raw data (except Amount column)
+* Saves cleaned file in `OUTPUT` folder
+
+#### save\_mismatch\_report(...)
+
+* Saves discrepancies to CSV report (timestamped filename)
+
+#### main(...)
+
+* Orchestrator:
+
+  * Load files
+  * Run comparisons
+  * Save report
+  * Save cleaned output
+  * Log processing summary
+
+---
+
+### 5. Main Entry Point
+
+```python
+if __name__ == "__main__":
+    ensure_app_folders()
+    root = tk.Tk()
+    app = DataCleanerGUI(root)
+    root.mainloop()
+```
+
+---
+
+### Flow Summary
+
+1. **Launch** GUI via `__main__`
+2. **User selects files** via "Browse"
+3. **Click Validate & Clean**
+
+   * Spinner shows
+   * Processing happens via `main()`
+4. **Output**:
+
+   * Cleaned file saved
+   * CSV report generated
+   * Log appears in GUI
+5. **User actions**:
+
+   * Filter log, save log, open folders
+
+---
+
+\[END PLACEHOLDER - Insert Real Implementation/Code Here as Needed]
+
+
 Ensures directory safety for:
 
 * `OUTPUT/`: Cleaned files
