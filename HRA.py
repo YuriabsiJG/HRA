@@ -7,6 +7,31 @@ from tkinter import ttk, filedialog, messagebox
 import ttkthemes
 from PIL import Image, ImageTk
 import base64
+import sys
+from pathlib import Path
+
+def get_base_path():
+    """Get the base path for the application in both exe and development"""
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        return Path(sys._MEIPASS)
+    return Path(os.path.dirname(os.path.abspath(__file__)))
+
+def get_app_path():
+    """Get the application path (where the executable or script is located)"""
+    if getattr(sys, 'frozen', False):
+        return Path(os.path.dirname(sys.executable))
+    return Path(os.path.dirname(os.path.abspath(__file__)))
+
+def ensure_app_folders():
+    """Ensure OUTPUT and REPORT folders exist in the correct location"""
+    app_path = get_app_path()
+    output_path = app_path / 'OUTPUT'
+    report_path = app_path / 'REPORT'
+    
+    output_path.mkdir(exist_ok=True)
+    report_path.mkdir(exist_ok=True)
+    
+    return output_path, report_path
 
 # Button icons in base64 format
 ICONS = {
@@ -127,28 +152,45 @@ class ButtonWithIcon(tk.Button):
         
         if icon_data:
             try:
-                # Decode and create the icon image
-                icon_data = base64.b64decode(icon_data)
-                icon = Image.open(io.BytesIO(icon_data))
-                # Scale icon based on text size
-                font = kwargs.get('font', ('Segoe UI', 9))
-                if isinstance(font, str):
-                    size = 16
-                else:
-                    size = max(16, int(font[1] * 1.5))
-                icon = icon.resize((size, size), Image.LANCZOS)
-                self.icon = ImageTk.PhotoImage(icon)
-                self.configure(image=self.icon)
+                import base64
+                import io
+                from PIL import Image, ImageTk
+                import sys
+
+                # Ensure icon_data is properly formatted
+                icon_data = icon_data.strip()
                 
-                # Add some padding between icon and text
-                current_padding = self.cget('padding')
-                if isinstance(current_padding, str):
-                    padding = tuple(map(int, current_padding.split()))
-                else:
-                    padding = current_padding if current_padding else (0, 0, 0, 0)
-                self.configure(padding=(padding[0] + 5, padding[1], padding[2], padding[3]))
+                # Decode and create the icon image
+                try:
+                    decoded_data = base64.b64decode(icon_data)
+                    icon = Image.open(io.BytesIO(decoded_data))
+                    
+                    # Scale icon based on text size
+                    font = kwargs.get('font', ('Segoe UI', 9))
+                    if isinstance(font, str):
+                        size = 16
+                    else:
+                        size = max(16, int(font[1] * 1.5))
+                        
+                    icon = icon.resize((size, size), Image.LANCZOS)
+                    self.icon = ImageTk.PhotoImage(icon)
+                    self.configure(image=self.icon)
+                    
+                    # Add padding between icon and text
+                    current_padding = kwargs.get('padding', (0, 0, 0, 0))
+                    if isinstance(current_padding, str):
+                        padding = tuple(map(int, current_padding.split()))
+                    else:
+                        padding = current_padding
+                    self.configure(padding=(padding[0] + 5, padding[1], padding[2], padding[3]))
+                except Exception as e:
+                    self.icon = None
+                    
+            except ImportError as e:
+                print(f"Warning: Required module not found: {e}", file=sys.stderr)
+                self.icon = None
             except Exception as e:
-                print(f"Warning: Could not load icon: {e}")
+                print(f"Warning: Could not load icon: {e}", file=sys.stderr)
                 self.icon = None
 
 class ToolTip:
@@ -426,30 +468,13 @@ Note: Large files may take longer to process.
                                            width=10)
         self.upload_browse_btn.grid(row=1, column=2, padx=5)
 
-        file_card.grid_columnconfigure(1, weight=1)
-
-        # Options and actions card
+        file_card.grid_columnconfigure(1, weight=1)        # Options card for future use
         options_card = ttk.Frame(main_frame, style='Card.TFrame', padding="15")
         options_card.grid(row=2, column=0, columnspan=3, sticky='ew', pady=(0, 20))
 
-        # Options
+        # Options frame kept for future options
         options_frame = ttk.Frame(options_card, style='Card.TFrame')
-        options_frame.pack(fill='x', pady=(0, 10))        # Options frame is kept for future options# Action buttons with icons
-        buttons_frame = ttk.Frame(options_card, style='Card.TFrame')
-        buttons_frame.pack(fill='x')
-        self.process_btn = ButtonWithIcon(buttons_frame, text=" Validate & Clean", 
-                                      icon_data=ICONS['process'],
-                                      command=self._process_files, 
-                                      style='Success.TButton',
-                                      width=15)
-        self.process_btn.pack(side='left', padx=5)
-        
-        self.save_log_btn = ButtonWithIcon(buttons_frame, text=" Save Log", 
-                                       icon_data=ICONS['save'],
-                                       command=self._save_log, 
-                                       style='Primary.TButton',
-                                       width=10)
-        self.save_log_btn.pack(side='left', padx=5)
+        options_frame.pack(fill='x', pady=(0, 10))
 
         # Results area
         results_frame = ttk.Frame(main_frame, style='Card.TFrame', padding="15")
@@ -499,12 +524,51 @@ Note: Large files may take longer to process.
 
         # Configure main frame grid weights
         main_frame.grid_rowconfigure(3, weight=1)
-        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)        # Bottom button bar
+        bottom_frame = ttk.Frame(main_frame, style='Card.TFrame', padding="15")
+        bottom_frame.grid(row=4, column=0, columnspan=3, sticky='ew', pady=(0, 10))
+
+        # Left side - Main action buttons
+        left_buttons = ttk.Frame(bottom_frame, style='Card.TFrame')
+        left_buttons.pack(side='left', fill='x')
+        
+        self.process_btn = ButtonWithIcon(left_buttons, text=" Validate & Clean", 
+                                      icon_data=ICONS['process'],
+                                      command=self._process_files, 
+                                      style='Success.TButton',
+                                      width=15)
+        self.process_btn.pack(side='left', padx=5)
+        
+        self.save_log_btn = ButtonWithIcon(left_buttons, text=" Save Log", 
+                                       icon_data=ICONS['save'],
+                                       command=self._save_log, 
+                                       style='Primary.TButton',
+                                       width=10)
+        self.save_log_btn.pack(side='left', padx=5)
+
+        # Separator
+        ttk.Separator(bottom_frame, orient='vertical').pack(side='left', padx=10, fill='y')
+
+        # Right side - Folder buttons
+        right_buttons = ttk.Frame(bottom_frame, style='Card.TFrame')
+        right_buttons.pack(side='left', fill='x')
+        
+        self.output_folder_btn = ButtonWithIcon(right_buttons, text=" OUTPUT Folder", 
+                                            icon_data=ICONS['browse'],
+                                            command=self._open_output_folder, 
+                                            style='Primary.TButton')
+        self.output_folder_btn.pack(side='left', padx=5)
+        
+        self.report_folder_btn = ButtonWithIcon(right_buttons, text=" REPORT Folder", 
+                                            icon_data=ICONS['browse'],
+                                            command=self._open_report_folder, 
+                                            style='Primary.TButton')
+        self.report_folder_btn.pack(side='left', padx=5)
 
         # Status bar with progress indication
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                              style='Card.TLabel', padding=(10, 5))
-        status_bar.grid(row=4, column=0, columnspan=3, sticky='ew')
+        status_bar.grid(row=5, column=0, columnspan=3, sticky='ew')
 
     def _update_status(self, message):
         """Update status bar message"""
@@ -574,14 +638,25 @@ Note: Large files may take longer to process.
 
             # Disable buttons during processing
             self.process_btn.configure(state='disabled')
-            self.save_log_btn.configure(state='disabled')
-
-            # Process files
-            base_dir = os.path.dirname(self.upload_file_path.get())
-            file_name = os.path.basename(self.upload_file_path.get())
+            self.save_log_btn.configure(state='disabled')            # Process files
+            file_name = Path(self.upload_file_path.get()).name
             name, ext = os.path.splitext(file_name)
-            cleaned_output_path = os.path.join(base_dir, f"{name}_cleaned{ext}")
-            report_output_path = os.path.join(base_dir, "mismatch_report.csv")
+            
+            # Ensure OUTPUT and REPORT directories exist in the executable's directory
+            output_dir, report_dir = ensure_app_folders()
+            
+            # Create paths for output files
+            cleaned_output_path = str(output_dir / f"{name}_cleaned{ext}")
+            report_output_path = str(report_dir / f"mismatch_report_{name}.csv")
+
+            # Versioned cleaned output path
+            version = 1
+            while True:
+                versioned_cleaned_output_path = output_dir / f"{name}_cleaned_v{version}{ext}"
+                if not versioned_cleaned_output_path.exists():
+                    break
+                version += 1
+            cleaned_output_path = str(versioned_cleaned_output_path)
 
             def custom_print(*args, **kwargs):
                 message = " ".join(map(str, args))
@@ -681,58 +756,132 @@ Note: Large files may take longer to process.
             del self._original_text  # Clear stored original text
         Toast(self.root, "Results cleared", type_='info')
 
+    def _open_output_folder(self):
+        """Open the OUTPUT folder in Windows Explorer"""
+        try:
+            from pathlib import Path
+            output_path = Path.cwd() / 'OUTPUT'
+            output_path.mkdir(exist_ok=True)  # Create if it doesn't exist
+            import subprocess
+            subprocess.run(['explorer', str(output_path)])
+            self._update_status("Opened OUTPUT folder")
+        except Exception as e:
+            Toast(self.root, f"Error opening OUTPUT folder: {str(e)}", type_='error')
+
+    def _open_report_folder(self):
+        """Open the REPORT folder in Windows Explorer"""
+        try:
+            from pathlib import Path
+            report_path = Path.cwd() / 'REPORT'
+            report_path.mkdir(exist_ok=True)  # Create if it doesn't exist
+            import subprocess
+            subprocess.run(['explorer', str(report_path)])
+            self._update_status("Opened REPORT folder")
+        except Exception as e:
+            Toast(self.root, f"Error opening REPORT folder: {str(e)}", type_='error')
+
+def get_base_path():
+    """Get the base path for the application, works both in dev and PyInstaller bundle"""
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        # Running in PyInstaller bundle
+        return Path(sys._MEIPASS)
+    else:
+        # Running in normal Python environment
+        return Path(os.path.dirname(os.path.abspath(__file__)))
+
+def ensure_app_folders():
+    """Ensure OUTPUT and REPORT folders exist"""
+    app_path = Path(os.path.dirname(os.path.abspath(sys.argv[0])))
+    output_path = app_path / 'OUTPUT'
+    report_path = app_path / 'REPORT'
+    
+    output_path.mkdir(exist_ok=True)
+    report_path.mkdir(exist_ok=True)
+    return output_path, report_path
+
 def read_data_file(file_path):
     """
-    Reads a semicolon-separated text file into a DataFrame with strict null preservation.
-    Uses chunking for large files and optimized dtypes.
+    Reads a semicolon-separated text file into a DataFrame with encoding detection.
+    Tries multiple encodings and uses error handling for problematic characters.
     """
-    try:
-        # Check file structure
-        with open(file_path, 'r') as f:
-            first_line = f.readline()
-            if len(first_line.split(';')) != 11:
-                print(f"Error: File {file_path} does not have 11 columns.")
+    # List of encodings to try, in order of preference
+    encodings = [
+        'utf-8', 
+        'cp1252',  # Windows-1252
+        'iso-8859-1',  # Latin-1
+        'utf-16',
+    ]
+
+    columns = [
+        'ID1', 'ID2', 'SSS_Number', 'Last_Name', 'First_Name',
+        'Middle_Name', 'Code', 'Amount', 'Status', 'Date', 'Position'
+    ]
+    
+    dtypes = {
+        'ID1': 'string', 'ID2': 'string', 'SSS_Number': 'string',
+        'Last_Name': 'string', 'First_Name': 'string', 'Middle_Name': 'string',
+        'Code': 'string', 'Amount': 'string', 'Status': 'string',
+        'Date': 'string', 'Position': 'string'
+    }
+
+    last_error = None
+    # Try each encoding until successful
+    for encoding in encodings:
+        try:
+            # First check file structure with the current encoding
+            with open(file_path, 'r', encoding=encoding) as f:
+                first_line = f.readline()
+                if len(first_line.split(';')) != 11:
+                    continue  # Try next encoding if column count doesn't match
+
+            # Read the file with pandas
+            df = pd.read_csv(
+                file_path, 
+                sep=';', 
+                header=None, 
+                names=columns,
+                dtype=dtypes,
+                keep_default_na=False,
+                na_values=['NULL'],
+                encoding=encoding,
+                encoding_errors='replace'  # Replace invalid characters
+            )
+
+            # Log which encoding was successful
+            print(f"Successfully read file using {encoding} encoding")
+
+            # Vectorized string stripping and cleaning
+            str_columns = df.select_dtypes(include=['string']).columns
+            df[str_columns] = df[str_columns].apply(
+                lambda x: x.str.strip().str.replace('\ufffd', '')  # Remove replacement characters
+                if x.notna().any() else x
+            )
+
+            # Validate SSS_Number uniqueness
+            duplicates = df['SSS_Number'].duplicated()
+            if duplicates.any():
+                print(f"Warning: Found {duplicates.sum()} duplicate SSS Numbers in {file_path}")
+                duplicate_numbers = df[duplicates]['SSS_Number'].tolist()
+                print(f"Duplicate SSS Numbers: {duplicate_numbers}")
                 return None
 
-        columns = [
-            'ID1', 'ID2', 'SSS_Number', 'Last_Name', 'First_Name',
-            'Middle_Name', 'Code', 'Amount', 'Flag', 'Field10', 'Field11'
-        ]
-        dtypes = {
-            'ID1': 'string', 'ID2': 'string', 'SSS_Number': 'string',
-            'Last_Name': 'string', 'First_Name': 'string', 'Middle_Name': 'string',
-            'Code': 'string', 'Amount': 'string', 'Flag': 'string',
-            'Field10': 'string', 'Field11': 'string'
-        }
+            # Validate Amount format (vectorized)
+            invalid_amounts = ~df['Amount'].str.match(r'^\d+(\.\d+)?$')
+            if invalid_amounts.any():
+                print(f"Warning: Found {invalid_amounts.sum()} invalid Amount formats in {file_path}")
+                print(f"Invalid Amounts: {df[invalid_amounts]['Amount'].tolist()}")
+                return None
 
-        # Use chunking for large files (>100 MB)
-        if os.path.getsize(file_path) > 100 * 1024 * 1024:
-            df = pd.concat([chunk for chunk in pd.read_csv(file_path, sep=';', header=None, names=columns, 
-                                                           dtype=dtypes, keep_default_na=False, na_values=['NULL'], 
-                                                           chunksize=10000)], ignore_index=True)
-        else:
-            df = pd.read_csv(file_path, sep=';', header=None, names=columns, 
-                             dtype=dtypes, keep_default_na=False, na_values=['NULL'])
-        
-        # Vectorized string stripping
-        str_columns = df.select_dtypes(include=['string']).columns
-        df[str_columns] = df[str_columns].apply(lambda x: x.str.strip() if x.notna().any() else x)
-        
-        # Validate SSS_Number uniqueness
-        if df['SSS_Number'].duplicated().any():
-            print(f"Error: Duplicate SSS Numbers found in {file_path}: {df[df['SSS_Number'].duplicated()]['SSS_Number'].tolist()}")
-            return None
+            return df
 
-        # Validate Amount format (vectorized)
-        mask = df['Amount'].str.match(r'^\d+(\.\d+)?$')
-        if not mask.all():
-            print(f"Error: Invalid Amount format in {file_path}: {df[~mask]['Amount'].tolist()}")
-            return None
+        except Exception as e:
+            last_error = e
+            continue  # Try next encoding
 
-        return df
-    except Exception as e:
-        print(f"Error reading file {file_path}: {e}")
-        return None
+    # If we get here, none of the encodings worked
+    print(f"Error reading file {file_path}: Unable to read with any encoding")
+    print(f"Last error encountered: {last_error}")
+    return None
 
 def compare_dataframes(raw_df, upload_df):
     """
@@ -756,7 +905,7 @@ def compare_dataframes(raw_df, upload_df):
                     mismatch_report.append({
                         'SSS_Number': row['SSS_Number'],
                         'Field': col,
-                        'Raw_Value': row[raw_col],
+                        'Final_Value': row[raw_col],
                         'Upload_Value': row[upload_col],
                         'Mismatch_Type': 'Value Mismatch'
                     })
@@ -776,12 +925,13 @@ def clean_upload_file(raw_df, upload_df, extra_records, output_path):
         print("No common records to clean after removing extra records.")
         return
 
-    # Merge with raw_df to update fields
+    # Merge with raw_df to update fields, but preserve 'Amount' from upload_df
     raw_df_subset = raw_df.set_index('SSS_Number')
     cleaned_df = cleaned_df.set_index('SSS_Number')
     for col in raw_df.columns:
-        if col != 'SSS_Number':
+        if col != 'SSS_Number' and col != 'Amount':
             cleaned_df[col] = raw_df_subset[col].reindex(cleaned_df.index).combine_first(cleaned_df[col])
+    # 'Amount' column is preserved from upload_df
 
     # Reset index and restore column order
     cleaned_df = cleaned_df.reset_index()[raw_df.columns]
@@ -794,23 +944,38 @@ def clean_upload_file(raw_df, upload_df, extra_records, output_path):
 
 def save_mismatch_report(mismatch_report, missing_records, extra_records, report_path):
     """
-    Saves the mismatch report to a CSV file.
+    Saves the mismatch report to a CSV file with versioning.
+    Adds timestamp to filename to allow multiple versions.
     """
+    from datetime import datetime
+    from pathlib import Path
+
+    # Generate version with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Split the path and add version before extension
+    report_path = Path(report_path)
+    new_filename = f"{report_path.stem}_v{timestamp}{report_path.suffix}"
+    versioned_path = report_path.parent / new_filename
+
     report_df = pd.DataFrame(mismatch_report)
-    missing_data = [{'SSS_Number': sss, 'Field': 'N/A', 'Raw_Value': 'N/A', 'Upload_Value': 'N/A', 'Mismatch_Type': 'Missing Record (in upload)'} for sss in missing_records]
-    extra_data = [{'SSS_Number': sss, 'Field': 'N/A', 'Raw_Value': 'N/A', 'Upload_Value': 'N/A', 'Mismatch_Type': 'Extra Record (in upload)'} for sss in extra_records]
+    missing_data = [{'SSS_Number': sss, 'Field': 'N/A', 'Final_Value': 'N/A', 'Upload_Value': 'N/A', 'Mismatch_Type': 'Missing Record (in upload)'} for sss in missing_records]
+    extra_data = [{'SSS_Number': sss, 'Field': 'N/A', 'Final_Value': 'N/A', 'Upload_Value': 'N/A', 'Mismatch_Type': 'Extra Record (in upload)'} for sss in extra_records]
     final_report_df = pd.concat([report_df, pd.DataFrame(missing_data), pd.DataFrame(extra_data)], ignore_index=True)
 
     try:
-        final_report_df.to_csv(report_path, index=False)
-        print(f"Mismatch report saved to: {report_path}")
+        final_report_df.to_csv(versioned_path, index=False)
+        print(f"Mismatch report saved to: {versioned_path}")
     except Exception as e:
-        print(f"Error saving mismatch report to {report_path}: {e}")
+        print(f"Error saving mismatch report to {versioned_path}: {e}")
 
 def main(raw_file_path, upload_file_path, cleaned_output_path, report_output_path):
     """
     Orchestrates data validation and cleaning.
     """
+    import time
+    start_time = time.time()
+    
     print("Starting data validation and cleaning process...")
 
     raw_df = read_data_file(raw_file_path)
@@ -838,11 +1003,11 @@ def main(raw_file_path, upload_file_path, cleaned_output_path, report_output_pat
             print(f"Showing first 1000 mismatches (total: {len(mismatch_report)}). Full details in report.")
             for mismatch in mismatch_report[:1000]:
                 print(f"SSS: {mismatch['SSS_Number']}, Field: {mismatch['Field']}, "
-                      f"Raw: '{mismatch['Raw_Value']}', Upload: '{mismatch['Upload_Value']}'")
+                      f"Final: '{mismatch['Final_Value']}', Upload: '{mismatch['Upload_Value']}'")
         else:
             for mismatch in mismatch_report:
                 print(f"SSS: {mismatch['SSS_Number']}, Field: {mismatch['Field']}, "
-                      f"Raw: '{mismatch['Raw_Value']}', Upload: '{mismatch['Upload_Value']}'")
+                      f"Final: '{mismatch['Final_Value']}', Upload: '{mismatch['Upload_Value']}'")
 
     if missing_records:
         print(f"\n--- Missing Records (in raw, but not in upload) ---")
@@ -855,10 +1020,17 @@ def main(raw_file_path, upload_file_path, cleaned_output_path, report_output_pat
     save_mismatch_report(mismatch_report, missing_records, extra_records, report_output_path)
     clean_upload_file(raw_df, upload_df, extra_records, cleaned_output_path)
 
+    end_time = time.time()
+    runtime = end_time - start_time
+    print(f"\nTotal runtime: {runtime:.2f} seconds")
+
     print("\n--- Process Completed ---")
     print("Check the mismatch report and cleaned file for details.")
 
 if __name__ == "__main__":
+    # Ensure application folders exist
+    ensure_app_folders()
+    
     root = tk.Tk()
     app = DataCleanerGUI(root)
     root.mainloop()
