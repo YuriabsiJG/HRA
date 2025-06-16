@@ -52,13 +52,130 @@ python HRA.py
 
 ---
 
-## 🔍 How It Works (Developer-Level Code Overview)
+## 🔍 How It Works 
 
-### 🧱 High-Level Architecture
+### 🧠 Expert Code Architecture & Flow
 
-* **GUI Layer**: Built using Tkinter, styled with `ttkthemes`, all encapsulated in the `DataCleanerGUI` class.
-* **Business Logic Layer**: Data validation, diffing, and cleaning handled by independent functions (like `read_data_file`, `compare_dataframes`, etc).
-* **I/O Management**: Uses `pandas` for loading/saving data and `Pathlib` for OS-independent file handling.
+This project adheres to a layered, modular design that separates concerns between UI, processing logic, and I/O operations. It’s structured for maintainability and extensibility — with the following architectural components:
+
+---
+
+### 📐 Architecture Layers
+
+| Layer           | Description                                                                  |
+| --------------- | ---------------------------------------------------------------------------- |
+| **UI Layer**    | `DataCleanerGUI` class encapsulates the GUI logic using Tkinter and ttk.     |
+| **Logic Layer** | Stateless, functional utilities for parsing, validating, comparing, writing. |
+| **I/O Layer**   | File encoding, folder creation, and safe read/write operations.              |
+
+---
+
+### 🧰 GUI System Design (`DataCleanerGUI`)
+
+The entire graphical interface is managed via `DataCleanerGUI`, a class that encapsulates the lifecycle of the Tkinter window.
+
+**Key Responsibilities:**
+
+* Initializes themed layout using `ttkthemes.vista`.
+* Renders sections: header, file inputs, results, footer.
+* Hooks action buttons (e.g., Browse, Validate, Save) to corresponding back-end logic.
+* Uses custom controls:
+
+  * `ButtonWithIcon` for consistent styling + embedded base64 icons.
+  * `Toast` for non-blocking feedback.
+  * `ToolTip` for enhanced UX.
+  * `LoadingSpinner` to indicate asynchronous work.
+
+**Design Patterns Used:**
+
+* Inversion of Control: Backend functions are injected into GUI handlers.
+* MV-ish Pattern: Although not a full MVVM, logic and view are clearly decoupled.
+
+---
+
+### 🧪 Backend Logic Breakdown
+
+All core business logic is abstracted into stateless functions — making them independently testable.
+
+#### 🔹 `read_data_file(file_path)`
+
+Handles robust multi-encoding loading using pandas.
+
+* Auto-detects encoding (UTF-8, Windows-1252, Latin1, UTF-16).
+* Validates structure: exact 11-column, semicolon-delimited format.
+* Verifies uniqueness of `SSS_Number`.
+* Cleans strings, strips invisible characters, validates `Amount`.
+
+> ⚠ Returns `None` on parse failure to allow graceful upstream error handling.
+
+#### 🔹 `compare_dataframes(raw_df, upload_df)`
+
+Performs vectorized diffing on all aligned fields (except `Amount`):
+
+* Uses `pandas.merge()` to align based on `SSS_Number`.
+* Extracts:
+
+  * Row-level mismatches
+  * Records missing from upload
+  * Extra records in upload
+
+Output: A structured diff for downstream reporting and correction.
+
+#### 🔹 `clean_upload_file(...)`
+
+Cleans the upload file by enforcing schema parity:
+
+* Filters out extra SSS Numbers.
+* Retains original `Amount` values from the upload.
+* Overwrites remaining fields with values from the raw file.
+* Auto-generates a versioned filename (e.g., `*_cleaned_v2.txt`).
+
+#### 🔹 `save_mismatch_report(...)`
+
+Logs all mismatch metadata into a timestamped CSV file.
+
+* Categorizes records: Mismatch / Missing / Extra.
+* Uses `pandas.concat` to unify them into one exportable frame.
+* Versioned to prevent accidental overwrite of previous audits.
+
+#### 🔹 `main(...)`
+
+Single-entry orchestration function.
+
+Flow:
+
+```
+read → compare → clean → save report → log
+```
+
+Also used by the GUI layer via function injection to `print()` — redirecting output into a Tkinter Text widget for real-time feedback.
+
+#### 🔹 `ensure_app_folders()`
+
+Ensures directory safety for:
+
+* `OUTPUT/`: Cleaned files
+* `REPORT/`: Audit files
+
+Supports both CLI and PyInstaller bundle contexts via `sys._MEIPASS` & `__file__`.
+
+---
+
+### ⚙️ Runtime Modes
+
+* **Script Mode**: Executed via `python HRA.py`, using local paths.
+* **Bundled Mode**: Supports PyInstaller packaging via frozen executable check (`sys.frozen`).
+
+---
+
+### 🔄 Extensibility Notes
+
+The codebase is intentionally built with extensibility in mind:
+
+* **Themed UI**: Swappable with other `ttkthemes` without code changes.
+* **Validation Logic**: Modular — easy to add additional column rules or reporting.
+* **Localization-Ready**: Encodings, tooltips, and labels are centralized.
+* **Testability**: All core logic is function-based and decoupled from GUI state.
 
 ---
 
