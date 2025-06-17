@@ -9,6 +9,7 @@ from PIL import Image, ImageTk
 import base64
 import sys
 from pathlib import Path
+from datetime import datetime
 
 def get_base_path():
     """Get the base path for the application in both exe and development"""
@@ -646,17 +647,9 @@ Note: Large files may take longer to process.
             output_dir, report_dir = ensure_app_folders()
             
             # Create paths for output files
-            cleaned_output_path = str(output_dir / f"{name}_cleaned{ext}")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            cleaned_output_path = str(output_dir / f"{name}_cleaned_v{timestamp}{ext}")
             report_output_path = str(report_dir / f"mismatch_report_{name}.csv")
-
-            # Versioned cleaned output path
-            version = 1
-            while True:
-                versioned_cleaned_output_path = output_dir / f"{name}_cleaned_v{version}{ext}"
-                if not versioned_cleaned_output_path.exists():
-                    break
-                version += 1
-            cleaned_output_path = str(versioned_cleaned_output_path)
 
             def custom_print(*args, **kwargs):
                 message = " ".join(map(str, args))
@@ -912,7 +905,7 @@ def compare_dataframes(raw_df, upload_df):
     
     return mismatch_report, missing_records, extra_records
 
-def clean_upload_file(raw_df, upload_df, extra_records, output_path):
+def clean_upload_file(raw_df, upload_df, extra_records, output_path): 
     """
     Cleans the upload DataFrame by aligning with raw data using SSS_Number.
     """
