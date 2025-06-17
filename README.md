@@ -152,7 +152,7 @@ Also used by the GUI layer via function injection to `print()` — redirecting o
 
 #### 🔹 `ensure_app_folders()`
 
-\[PLACEHOLDER: DEVELOPER DOCUMENTATION FOR SSS DATA CLEANER]
+
 
 This Python code defines a GUI application for cleaning and validating SSS (Social Security System) data files. It's structured as a desktop application using the tkinter library for the graphical user interface, pandas for data manipulation, and pathlib and os for file system operations.
 
